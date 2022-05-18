@@ -1,68 +1,150 @@
-#include "shell.h"
-
-int exitcode = 0;
-int errorcount = 0;
+#include "main.h"
 
 /**
- * main - a simple shell program written in C
- * @argc: number of arguments
- * @argv: array of arguments
- * @env: array of environment variables
- *
- * Return: 0 always (but program may exit early)
+ * shell - simple shell
+ * @build: input build
  */
-
-int main(__attribute__((unused)) int argc, char **argv, char **env)
+void shell(config *build)
 {
-	char *user_input = NULL;
-	char **commands = NULL;
-	char **path_array = NULL;
-	size_t nbytes = 0;
-	ssize_t bytes_read = 0;
-	char *NAME = argv[0];
-	int atty_is = isatty(0);
-	char *filename = "splash_screen.txt";
-	FILE *fptr = NULL;
-
-	signal(SIGINT, SIG_IGN);
-
-	// display splash screen
-	if((fptr = fopen(filename,"r")) == NULL)
+	while (true)
 	{
-		fprintf(stderr,"error opening %s\n",filename);
-		return 1;
+		checkAndGetLine(build);
+		if (splitString(build) == false)
+			continue;
+		if (findBuiltIns(build) == true)
+			continue;
+		checkPath(build);
+		forkAndExecute(build);
 	}
-	display_splash_screen(fptr);
-	fclose(fptr);
+}
 
-	while (1)
+/**
+ * checkAndGetLine - check stdin and retrieves next line; handles
+ * prompt display
+ * @build: input build
+ */
+void checkAndGetLine(config *build)
+{
+	register int len;
+	size_t bufferSize = 0;
+	char *ptr, *ptr2;
+
+	build->args = NULL;
+	build->envList = NULL;
+	build->lineCounter++;
+	if (isatty(STDIN_FILENO))
+		displayPrompt();
+	len = getline(&build->buffer, &bufferSize, stdin);
+	if (len == EOF)
 	{
-		errorcount++;
-		if (atty_is)
-			write(STDOUT_FILENO, "hella_shell$ ", 13);
-		bytes_read = getline(&user_input, &nbytes, stdin);
-		if (bytes_read == -1)
-		{
-			free(user_input);
-			exit(exitcode);
-		}
-		if (exit_check(user_input, NAME) == -1)
-			continue;
-		if (blank_check(user_input) == 1)
-			continue;
-		if (env_check(user_input) == 1)
-		{
-			print_env(env);
-			continue;
-		}
-		path_array = get_path_array(env);
-		commands = parse_input(user_input, path_array, NAME);
-		if (commands != NULL)
-		{
-			fork_wait_exec(commands, path_array, env, NAME, user_input);
-			free_array(commands);
-			free_array(path_array);
-		}
+		freeMembers(build);
+		if (isatty(STDIN_FILENO))
+			displayNewLine();
+		if (build->errorStatus)
+			exit(build->errorStatus);
+		exit(EXIT_SUCCESS);
+
 	}
-	return (0);
+	ptr = _strchr(build->buffer, '\n');
+	ptr2 = _strchr(build->buffer, '\t');
+	if (ptr || ptr2)
+		insertNullByte(build->buffer, len - 1);
+	stripComments(build->buffer);
+}
+
+/**
+ * stripComments - remove comments from input string
+ * @str: input string
+ * Return: length of remaining string
+ */
+void stripComments(char *str)
+{
+	register int i = 0;
+	_Bool notFirst = false;
+
+	while (str[i])
+	{
+		if (i == 0 && str[i] == '#')
+		{
+			insertNullByte(str, i);
+			return;
+		}
+		if (notFirst)
+		{
+			if (str[i] == '#' && str[i - 1] == ' ')
+			{
+				insertNullByte(str, i);
+				return;
+			}
+		}
+		i++;
+		notFirst = true;
+	}
+}
+
+/**
+ * forkAndExecute - fork current build and execute processes
+ * @build: input build
+ */
+void forkAndExecute(config *build)
+{
+	int status;
+	pid_t f1 = fork();
+
+	convertLLtoArr(build);
+	if (f1 == -1)
+	{
+		perror("error\n");
+		freeMembers(build);
+		freeArgs(build->envList);
+		exit(1);
+	}
+	if (f1 == 0)
+	{
+		if (execve(build->fullPath, build->args, build->envList) == -1)
+		{
+			errorHandler(build);
+			freeMembers(build);
+			freeArgs(build->envList);
+			if (errno == ENOENT)
+				exit(127);
+			if (errno == EACCES)
+				exit(126);
+		}
+	} else
+	{
+		wait(&status);
+		if (WIFEXITED(status))
+			build->errorStatus = WEXITSTATUS(status);
+		freeArgsAndBuffer(build);
+		freeArgs(build->envList);
+	}
+}
+
+/**
+ * convertLLtoArr - convert linked list to array
+ * @build: input build
+ */
+void convertLLtoArr(config *build)
+{
+	register int i = 0;
+	size_t count = 0;
+	char **envList = NULL;
+	linked_l *tmp = build->env;
+
+	count = list_len(build->env);
+	envList = malloc(sizeof(char *) * (count + 1));
+	if (!envList)
+	{
+		perror("Malloc failed\n");
+		exit(1);
+	}
+	while (tmp)
+	{
+		envList[i] = _strdup(tmp->string);
+		tmp = tmp->next;
+		i++;
+	}
+	envList[i] = NULL;
+	build->envList = envList;
 }
