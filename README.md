@@ -1,50 +1,100 @@
-# The Shell Project - Olaf The Simple Shell
+# Welcome to Ethio - Simple Shell!
 
-## Synopsis
-This is a humble and simple implementation of a UNIX command line interpreter.
+A simple UNIX command interpreter written as part of the low-level programming and algorithm track at ALX SE Holberton Program.
 
-## Description
-Olaf can interpret and execute command line arguments read from the standard input. It reads line by line from a file or the terminal line. It then interprets the lines and executes it if the line is a valid command.
 
-## Usage
-All the files are to be compiled on an Ubuntu 14.04 LTS machine with:    
-```
-gcc -Wall -Werror -Wextra -pedantic *.c -o olaf
-```  
-  
-Once compiled, to start the program, run:    
-```./olaf```  
-  
-To exit the program, run:  
-```Olaf $ exit```  
-  
-The Olaf shell supports most shell commands, such as ```cat```, ```pwd```, ```ls -la``` and more.  
+#  Description
 
-## Built-Ins  
-The following built-ins are supported by the Olaf shell:   
-  
-+ ```env``` - Print the current environment    
-+ ```setenv VARIABLE VALUE``` - Initialize  a new environment VARIABLE  with VALUE, or modify an existing VARIABLE with VALUE  
-+ ```unsetenv VARIABLE``` - Remove an environment VARIABLE   
+**Ethio** is a simple UNIX command language interpreter that reads commands from either a file or standard input and executes them.
 
-## Return Value  
-Olaf shell will exit with status 0 unless status is specified with syntax ```exit VALUE```.  
+## Invocation
 
-## List of functions.
+Usage:  **Ethio**  [filename]
 
-| Function Name | Description |
-|---------------- | -----------|
-|[parse_line](https://github.com/stvngrcia/simple_shell/blob/master/parsing_functions.c)    | Parses the command line looking for commands and argumements.|
-|[create_Child](https://github.com/stvngrcia/simple_shell/blob/master/parsing_functions.c) | Forks the current process in order to execute another program.|
-|[tokenize](https://github.com/stvngrcia/simple_shell/blob/master/parsing_functions.c) | Separates a string in to an array of tokens based on a delimiter passed to the function. |
-|[count_token](https://github.com/stvngrcia/simple_shell/blob/master/parsing_functions.c) | Counts how many tokens are on a given string that is separated by a delimeter. |
-|[find_path](https://github.com/stvngrcia/simple_shell/blob/master/find_path.c)|Looks through the environmental variables untill it finds the PATH variable, It then returns the index of its possition.|
-|[tokenize_path](https://github.com/stvngrcia/simple_shell/blob/master/find_path.c) | Separates the PATH variable into separate strings each containing a directory in the PATH. |
-|[search_directories](https://github.com/stvngrcia/simple_shell/blob/master/find_path.c) | Looks through directories stored in path_tokens for a specifc file name which represents a command. |
-|[build_path](https://github.com/stvngrcia/simple_shell/blob/master/find_path.c) | Combines two strings, one representing the path directory and the other representing the command file. |
-|[_strcmp](https://github.com/stvngrcia/simple_shell/blob/master/hbtlib.c) | Compares two strings and if they match the function returns 0.|
-|[_strdup](https://github.com/stvngrcia/simple_shell/blob/master/hbtlib.c) | Duplicates a string.|
-|[print_str](https://github.com/stvngrcia/simple_shell/blob/master/hbtlib.c)| Prints a string character by character.|
-|[cd_b](https://github.com/stvngrcia/simple_shell/blob/master/builtins.c) | Changes the current working directory to the parameter passed to the command cd. |
-|[env_b](https://github.com/stvngrcia/simple_shell/blob/master/builtins.c) | Prints all environmental variables available in the current shell.
-|[check_built_ins](https://github.com/stvngrcia/simple_shell/blob/master/builtins.c) | Checks if a command exitst as a builtin funcition and then it returns a pointer to the right function.|
+To invoke  **Ethio**, compile all  `.c`  files in the repository and run the resulting executable:
+
+**Ethio** can be invoked both interactively and non-interactively. If **Ethio** is invoked with standard input not connected to a terminal, it reads and executes received commands in order.
+
+If **Ethio** is invoked with standard input connected to a terminal (determined by [isatty](https://linux.die.net/man/3/isatty)(3)), an _interactive_ shell is opened. When executing interactively, **Ethio** displays the prompt `$` when it is ready to read a command.
+
+### Environment
+
+Upon invocation,  **Ethio**  receives and copies the environment of the parent process in which it was executed. This environment is an array of  _name-value_  strings describing variables in the format  _NAME=VALUE_. A few key environmental variables are:
+#### PWD
+The current working directory as set by the  **cd**  command.
+#### PATH
+A colon-separated list of directories in which the shell looks for commands. A null directory name in the path (represented by any of two adjacent colons, an initial colon, or a trailing colon) indicates the current directory.
+
+### Command Execution
+After receiving a command,  **Ethio**  tokenizes it into words using  `" "`  as a delimiter. The first word is considered the command and all remaining words are considered arguments to that command.  **Ethio**  then proceeds with the following actions:
+
+1.  If the first character of the command is neither a slash (`\`) nor dot (`.`), the shell searches for it in the list of shell builtins. If there exists a builtin by that name, the builtin is invoked.
+2.  If the first character of the command is none of a slash (`\`), dot (`.`), nor builtin,  **Ethio**  searches each element of the  **PATH**  environmental variable for a directory containing an executable file by that name.
+3.  If the first character of the command is a slash (`\`) or dot (`.`) or either of the above searches was successful, the shell executes the named program with any remaining given arguments in a separate execution environment.
+
+### Exit Status
+**Ethio**  returns the exit status of the last command executed, with zero indicating success and non-zero indicating failure.
+
+If a command is not found, the return status is  `127`; if a command is found but is not executable, the return status is 126.
+
+All builtins return zero on success and one or two on incorrect usage (indicated by a corresponding error message).
+### Signals
+While running in interactive mode,  **Ethio**  ignores the keyboard input  `Ctrl+c`. Alternatively, an input of end-of-file (`Ctrl+d`) will exit the program.
+
+User hits  `Ctrl+d`  in the third line.
+### Variable Replacement
+**Ethio** interprets the `$` character for variable replacement.
+#### $ENV_VARIABLE
+
+`ENV_VARIABLE`  is substituted with its value.
+#### $?
+`?` is substitued with the return value of the last program executed.
+#### $$
+
+The second  `$`  is substitued with the current process ID.
+### Comments
+**Ethio** ignores all words and characters preceeded by a `#` character on a line.
+### Operators
+**Ethio**  specially interprets the following operator characters:
+
+Commands separated by a  `;`  are executed sequentially.
+#### && - AND logical operator
+`command1 && command2`:  `command2`  is executed if, and only if,  `command1`  returns an exit status of zero.
+#### || - OR logical operator
+`command1 || command2`:  `command2`  is executed if, and only if,  `command1`  returns a non-zero exit status.
+The operators `&&` and `||` have equal precedence, followed by `;`.
+### Ethio Builtin Commands
+#### cd
+-   Usage:  `cd [DIRECTORY]`
+-   Changes the current directory of the process to  `DIRECTORY`.
+-   If no argument is given, the command is interpreted as  `cd $HOME`.
+-   If the argument  `-`  is given, the command is interpreted as  `cd $OLDPWD`  and the pathname of the new working directory is printed to standad output.
+-   If the argument,  `--`  is given, the command is interpreted as  `cd $OLDPWD`  but the pathname of the new working directory is not printed.
+-   The environment variables  `PWD`  and  `OLDPWD`  are updated after a change of directory.
+#### alias
+-   Usage:  `alias [NAME[='VALUE'] ...]`
+-   Handles aliases.
+-   `alias`: Prints a list of all aliases, one per line, in the form  `NAME='VALUE'`.
+-   `alias NAME [NAME2 ...]`: Prints the aliases  `NAME`,  `NAME2`, etc. one per line, in the form  `NAME='VALUE'`.
+-   `alias NAME='VALUE' [...]`: Defines an alias for each  `NAME`  whose  `VALUE`  is given. If  `name`  is already an alias, its value is replaced with  `VALUE`.
+#### exit
+-   Usage:  `exit [STATUS]`
+-   Exits the shell.
+-   The  `STATUS`  argument is the integer used to exit the shell.
+-   If no argument is given, the command is interpreted as  `exit 0`.
+#### env
+-   Usage:  `env`
+-   Prints the current environment.
+#### setenv
+-   Usage:  `setenv [VARIABLE] [VALUE]`
+-   Initializes a new environment variable, or modifies an existing one.
+-   Upon failure, prints a message to  `stderr`.
+#### unsetenv
+-   Usage:  `unsetenv [VARIABLE]`
+-   Removes an environmental variable.
+-   Upon failure, prints a message to  `stderr`.
+## Authors
+-- Yvonne Gachara 
+   Collince Okoto 
+## Acknowledgements
+**Ethio** emulates basic functionality of the **sh** shell. This README borrows form the Linux man pages [sh(1)](https://linux.die.net/man/1/sh) and [dash(1)](https://linux.die.net/man/1/dash).
