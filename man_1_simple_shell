@@ -1,4 +1,4 @@
-.TH man 1 "20 November 2017" "1.0" "Olaf The Shell man page"
+.TH man 1 "17 May 2022" "1.0" "Olaf The Shell man page"
 .SH NAME
 .B Olaf
 - A basic UNIX command line interpreter.
